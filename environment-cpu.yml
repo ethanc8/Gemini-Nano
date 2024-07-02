@@ -7,6 +7,9 @@ channels:
 dependencies:
   - python
   - pip
+  - pytorch
+  - cpuonly
+  - accelerate
   - safetensors
   - matplotlib
   - tensorflow

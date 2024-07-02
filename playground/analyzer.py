@@ -55,4 +55,6 @@ nameOfTensorType = {
 for i in range(graph.TensorsLength()):
     tensor = graph.Tensors(i)
     print(f"{nameOfTensorType[tensor.Type()]} {tensor.Shape(0)} {tensor.Name().decode("utf-8")}")
-
+    tensor_buf = model.Buffers(tensor.Buffer())
+    tensor_data = buf[tensor_buf.Offset():tensor_buf.Offset()+tensor_buf.Size()]
+    # print(tensor_data)

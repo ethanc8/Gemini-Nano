@@ -63,7 +63,9 @@ gemma_2b_config = GemmaConfig(
 
 gemma_7b_config = GemmaConfig()
 
-CONFIG_MAPPING = {"2B": gemma_2b_config, "7B": gemma_7b_config}
+gemini_nano_config = GemmaConfig()
+
+CONFIG_MAPPING = {"2B": gemma_2b_config, "7B": gemma_7b_config, "GEMINI_XS": gemini_nano_config}
 LAYER_NAME_MAPPING = {"embedder.weight": "model.embed_tokens.weight"}
 
 
@@ -142,17 +144,17 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--input_checkpoint",
-        help="Absolute path to the target Gemma weights.",
+        help="Absolute path to the target Gemini Nano weights.",
         required=True,
     )
     parser.add_argument(
         "--tokenizer_checkpoint",
-        help="Location of Gemma tokenizer model",
+        help="Location of Gemini Nano tokenizer model",
     )
     parser.add_argument(
         "--model_size",
         default="7B",
-        choices=["2B", "7B", "tokenizer_only"],
+        choices=["2B", "7B", "tokenizer_only", "GEMINI_XS"],
         help="'f' models correspond to the finetuned versions, and are specific to the Gemma2 official release. For more details on Gemma2, checkout the original repo: https://huggingface.co/google/gemma-7b",
     )
     parser.add_argument(
