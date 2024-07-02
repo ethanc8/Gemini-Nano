@@ -10,5 +10,7 @@ dependencies:
   - safetensors
   - matplotlib
   - tensorflow
+  - flatbuffers>=24.3
+  - libprotobuf==4.25.*
   - pip:
     - mediapipe

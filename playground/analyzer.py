@@ -2,6 +2,8 @@
 import tflite.Model, tflite.SubGraph
 import sys
 
+from mediapipe.tasks.cc.genai.inference.proto import llm_params_pb2
+
 input_file = open(sys.argv[1], "rb")
 buf = bytearray(input_file.read())
 
