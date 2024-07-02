@@ -10,7 +10,10 @@ dependencies:
   - safetensors
   - matplotlib
   - tensorflow
+  - transformers
+  - sentencepiece-python
   - flatbuffers>=24.3
+  - protobuf==4.25.*
   - libprotobuf==4.25.*
   - pip:
     - mediapipe

@@ -4,6 +4,9 @@ import sys
 
 from mediapipe.tasks.cc.genai.inference.proto import llm_params_pb2
 
+# FIXME: sentencepiece and mediapipe protobuf conflict due to both setting some abseil flag
+# import sentencepiece as spm
+
 input_file = open(sys.argv[1], "rb")
 buf = bytearray(input_file.read())
 
@@ -17,15 +20,29 @@ print(f"Model name: {graph.Name()}")
 
 print("===METADATA===")
 
+parameters: llm_params_pb2.LlmParameters = None
+
+
 for i in range(model.MetadataLength()):
     metametadata = model.Metadata(i)
     metadata_buf = model.Buffers(metametadata.Buffer())
+    metadata = buf[metadata_buf.Offset():metadata_buf.Offset()+metadata_buf.Size()]
     print(metametadata.Name().decode("utf-8"))
-    # Get the buffer data
     if metadata_buf.Size() < 80: # Don't print huge buffers
-        print(buf[metadata_buf.Offset():metadata_buf.Offset()+metadata_buf.Size()])
+        print(metadata)
+    if metametadata.Name() == b'odml.infra.proto.LlmParameters':
+        parameters = llm_params_pb2.LlmParameters()
+        parameters.ParseFromString(metadata)
+        print(parameters)
+    elif metametadata.Name() == b'spm_vocab_model':
+        # We can load it with sentencepiece like so:
+        # sp = spm.SentencePieceProcessor()
+        # sp.load_from_serialized_proto(metadata)
+        pass
+    elif metametadata.Name() == b'odml.infra.LlmModelType':
+        print(metadata[0])
 
-sys.exit(0)
+# sys.exit(0)
 
 print("===TENSORS===")
 
