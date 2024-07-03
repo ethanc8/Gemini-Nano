@@ -2,7 +2,9 @@
 import tflite.Model, tflite.SubGraph, tflite.TensorType
 import sys
 
-import numpy as np
+import safetensors.torch as st
+
+import torch
 
 # from mediapipe.tasks.cc.genai.inference.proto import llm_params_pb2
 
@@ -47,10 +49,16 @@ graph: tflite.SubGraph.SubGraph = model.Subgraphs(0)
 
 print("===TENSORS===")
 
-nameOfTensorType = {
+name_of_tensor_type = {
      0: "FLOAT32",
      9: "INT8   ",
     17: "INT4   ",
+}
+
+dtype_for_tensor_type = {
+    0: torch.float32,
+    9: torch.int8,
+    17: torch.uint8 # because torch.int4 doesn't exist
 }
 
 # Reversed from https://github.com/google-ai-edge/mediapipe/blob/master/mediapipe/tasks/python/genai/converter/safetensors_converter.py#L433
@@ -116,15 +124,19 @@ def update_target_name(target_name: str) -> str:
 
     return target_name
 
+tensor_dict = {}
+
 for i in range(graph.TensorsLength()):
     tensor = graph.Tensors(i)
     tensor_size = tensor.Shape(0)
     tensor_name = tensor.Name().decode("utf-8")
     tensor_type: tflite.TensorType = tensor.Type()
-    print(f"{nameOfTensorType[tensor.Type()]} {tensor.Shape(0)} {tensor.Name().decode("utf-8")}")
     tensor_buf = model.Buffers(tensor.Buffer())
     target_name = update_target_name(tensor_name)
+
+    print(f"{name_of_tensor_type[tensor_type]} {tensor_size} {tensor_name}")
     
+    shape = None
     if(("self_attn.q_proj.weight" in target_name
      or "self_attn.o_proj.weight" in target_name
        ) and tensor_size == 4194304):
@@ -136,7 +148,7 @@ for i in range(graph.TensorsLength()):
     elif(("mlp.up_proj" in target_name
        or "mlp.gate_proj" in target_name
          ) and tensor_size == 12582912):
-        shape = (49125, 256)
+        shape = (49152, 256)
     elif(("mlp.down_proj" in target_name
          ) and tensor_size == 12582912):
         shape = (8192, 1536)
@@ -144,11 +156,24 @@ for i in range(graph.TensorsLength()):
            and tensor_size == 262275072):
         shape = (1024512, 256)
     else:
-        shape = (tensor_size,)
+        # shape = (tensor_size,)
+        pass
     
     print(f">> {shape} {target_name}")
+    # ({tensor_buf.Size()}, {tensor_buf.Size() / tensor_size} B/element)
+    # it's 1 B/element
     
+    tensor_data = torch.frombuffer(buffer=buf, 
+                                   dtype=dtype_for_tensor_type[tensor_type], 
+                                   offset=tensor_buf.Offset(),
+                                   count=tensor_buf.Size(),
+                                  )
     
-    # tensor_data = buf[tensor_buf.Offset():tensor_buf.Offset()+tensor_buf.Size()]
+    if shape is not None:
+        tensor_data.reshape(shape)
 
-    # print(tensor_data)
+    tensor_dict[target_name] = tensor_data
+
+st.save_file(tensor_dict, sys.argv[2])
+print(f"Success! Saved to {sys.argv[2]}")
+
