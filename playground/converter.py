@@ -4,7 +4,7 @@ import sys
 
 import safetensors.torch as st
 
-import torch
+import numpy as np
 
 # from mediapipe.tasks.cc.genai.inference.proto import llm_params_pb2
 
@@ -59,6 +59,12 @@ dtype_for_tensor_type = {
     0: torch.float32,
     9: torch.int8,
     17: torch.uint8 # because torch.int4 doesn't exist
+}
+
+size_for_tensor_type = {
+    0: 4,
+    9: 1,
+    17: 0.5
 }
 
 # Reversed from https://github.com/google-ai-edge/mediapipe/blob/master/mediapipe/tasks/python/genai/converter/safetensors_converter.py#L433
@@ -126,12 +132,35 @@ def update_target_name(target_name: str) -> str:
 
 tensor_dict = {}
 
+# The int4 is actually a uint4, where you subtract 8 to get the value.
+# It is not two's complement, but rather excess-8 (excess-K for K = 8).
+def convert_quantized_int4_to_fp32(quantized_data, scale_data, dims, dim_scale):
+    zero_point = 8
+    scaled_data = np.zeros(dims[0] * dims[1], dtype=np.float32)
+    index = 0  # To keep track of position in the scaled_data array
+
+    for i in range(dims[0]):
+        for j in range(dims[1] // 2):
+            # First element
+            scale = scale_data[j * 2] if dim_scale else scale_data[i]
+            scaled_data[index] = (int(quantized_data[index // 2] & 0x0f) - zero_point) * scale
+            index += 1
+
+            # Second element
+            scale = scale_data[j * 2 + 1] if dim_scale else scale_data[i]
+            scaled_data[index] = (int(quantized_data[index // 2] >> 4) - zero_point) * scale
+            index += 1
+
+    return scaled_data
+
 for i in range(graph.TensorsLength()):
     tensor = graph.Tensors(i)
-    tensor_size = tensor.Shape(0)
+    # tensor_buf_size = tensor.Shape(0)
     tensor_name = tensor.Name().decode("utf-8")
     tensor_type: tflite.TensorType = tensor.Type()
     tensor_buf = model.Buffers(tensor.Buffer())
+    tensor_buf_size = tensor_buf.Size()
+    tensor_size = tensor_buf_size / size_for_tensor_type[tensor_type]
     target_name = update_target_name(tensor_name)
 
     print(f"{name_of_tensor_type[tensor_type]} {tensor_size} {tensor_name}")
@@ -139,22 +168,26 @@ for i in range(graph.TensorsLength()):
     shape = None
     if(("self_attn.q_proj.weight" in target_name
      or "self_attn.o_proj.weight" in target_name
-       ) and tensor_size == 4194304):
+       ) and tensor_buf_size == 4194304):
         shape = (8192, 512)
     elif(("self_attn.k_proj.weight" in target_name
        or "self_attn.v_proj.weight" in target_name
-         ) and tensor_size == 524288):
+         ) and tensor_buf_size == 524288):
         shape = (1024, 512)
     elif(("mlp.up_proj" in target_name
        or "mlp.gate_proj" in target_name
-         ) and tensor_size == 12582912):
+         ) and tensor_buf_size == 12582912):
         shape = (49152, 256)
     elif(("mlp.down_proj" in target_name
-         ) and tensor_size == 12582912):
+         ) and tensor_buf_size == 12582912):
         shape = (8192, 1536)
     elif("model.embed_tokens.weight" == target_name
-           and tensor_size == 262275072):
+           and tensor_buf_size == 262275072):
         shape = (1024512, 256)
+    # LayerNorm weights are of shape {1, 1, params.model_dim_D}
+    elif(("layernorm" in target_name
+         ) and tensor_buf_size == 2048):
+        shape = (1, 1, 2048)
     else:
         # shape = (tensor_size,)
         pass
@@ -163,17 +196,17 @@ for i in range(graph.TensorsLength()):
     # ({tensor_buf.Size()}, {tensor_buf.Size() / tensor_size} B/element)
     # it's 1 B/element
     
-    tensor_data = torch.frombuffer(buffer=buf, 
-                                   dtype=dtype_for_tensor_type[tensor_type], 
-                                   offset=tensor_buf.Offset(),
-                                   count=tensor_buf.Size(),
-                                  )
+    # tensor_data = torch.frombuffer(buffer=buf, 
+    #                                dtype=dtype_for_tensor_type[tensor_type], 
+    #                                offset=tensor_buf.Offset(),
+    #                                count=tensor_buf.Size(),
+    #                               )
     
-    if shape is not None:
-        tensor_data.reshape(shape)
+    # if shape is not None:
+    #     tensor_data.reshape(shape)
 
-    tensor_dict[target_name] = tensor_data
+    # tensor_dict[target_name] = tensor_data
 
-st.save_file(tensor_dict, sys.argv[2])
-print(f"Success! Saved to {sys.argv[2]}")
+# st.save_file(tensor_dict, sys.argv[2])
+# print(f"Success! Saved to {sys.argv[2]}")
 
