@@ -8,8 +8,8 @@ import torch
 import safetensors.torch as st
 
 # TARGET_DTYPE = torch.float32
-# TARGET_DTYPE = torch.float16
-TARGET_DTYPE = torch.bfloat16
+TARGET_DTYPE = torch.float16
+# TARGET_DTYPE = torch.bfloat16
 
 # from mediapipe.tasks.cc.genai.inference.proto import llm_params_pb2
 
@@ -244,9 +244,14 @@ for tensor_name, tensor in fp32_tensors.items():
         tensor_data.reshape(dims)
 
     if TARGET_DTYPE != torch.float32:
-        tensor_data = tensor_data.to(dtype=TARGET_DTYPE)
+        tensor_data2 = tensor_data.to(dtype=TARGET_DTYPE)
+    else:
+        tensor_data2 = tensor_data
+    del tensor_data
 
-    tensor_dict[target_name] = tensor_data
+    tensor_dict[target_name] = tensor_data2
+
+del fp32_tensors
 
 # Dequantize all of the i8 tensors
 
@@ -280,6 +285,10 @@ for tensor_name, quantized_tensor in i8_tensors.items():
 
     tensor_dict[target_name] = tensor_data
 
+    del quantized_buf, scale_buf
+
+del i8_tensors
+
 # Dequantize all of the i4 tensors
 
 for tensor_name, quantized_tensor in i4_tensors.items():
@@ -311,6 +320,14 @@ for tensor_name, quantized_tensor in i4_tensors.items():
                                                dtype=TARGET_DTYPE)
 
     tensor_dict[target_name] = tensor_data
+
+    del quantized_buf, scale_buf
+
+del i4_tensors
+del scale_tensors
+
+del buf, model, graph
+input_file.close()
 
 print(f"Saving to {sys.argv[2]}...")
 st.save_file(tensor_dict, sys.argv[2])
