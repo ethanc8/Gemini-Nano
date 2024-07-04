@@ -3,9 +3,13 @@ import tflite.Model, tflite.SubGraph
 from tflite.TensorType import TensorType
 import sys
 
-import safetensors.numpy as st
 
-import numpy as np
+import torch
+import safetensors.torch as st
+
+# TARGET_DTYPE = torch.float32
+# TARGET_DTYPE = torch.float16
+TARGET_DTYPE = torch.bfloat16
 
 # from mediapipe.tasks.cc.genai.inference.proto import llm_params_pb2
 
@@ -55,9 +59,9 @@ name_of_tensor_type = {
 }
 
 dtype_for_tensor_type = {
-    0: np.float32,
-    9: np.int8,
-    17: np.uint8 # because torch.int4 doesn't exist
+    0: torch.float32,
+    9: torch.int8,
+    17: torch.uint8 # because torch.int4 doesn't exist
 }
 
 size_for_tensor_type = {
@@ -132,9 +136,9 @@ def update_target_name(target_name: str) -> str:
 # The int4 is actually a uint4, where you subtract 8 to get the value.
 # It is not two's complement, but rather excess-8 (excess-K for K = 8).
 # dim_scale = index of the dimension to scale
-def convert_quantized_int4_to_fp32(quantized_data, scale_data, dims, dim_scale):
+def convert_quantized_int4_to_fp(quantized_data, scale_data, dims, dim_scale, dtype):
     zero_point = 8
-    scaled_data = np.zeros(dims[0] * dims[1], dtype=np.float32)
+    scaled_data = torch.zeros(dims[0] * dims[1], dtype=dtype)
     index = 0  # To keep track of position in the scaled_data array
 
     for i in range(dims[0]):
@@ -151,9 +155,9 @@ def convert_quantized_int4_to_fp32(quantized_data, scale_data, dims, dim_scale):
 
     return scaled_data
 
-def convert_quantized_int8_to_fp32(quantized_data, scale_data, dims, dim_scale):
-    scaled_data = np.zeros(dims[0] * dims[1], dtype=np.float32)
-    # quantized_data = np.asarray(quantized_data, dtype=np.int8)
+def convert_quantized_int8_to_fp(quantized_data, scale_data, dims, dim_scale, dtype):
+    scaled_data = torch.zeros(dims[0] * dims[1], dtype=dtype)
+    # quantized_data = torch.asarray(quantized_data, dtype=torch.int8)
     
     index = 0  # To keep track of position in the scaled_data array
 
@@ -231,13 +235,16 @@ for tensor_name, tensor in fp32_tensors.items():
 
     target_name = update_target_name(tensor_name)
 
-    tensor_data = np.frombuffer(buffer=buf, 
-                                dtype=np.float32, 
+    tensor_data = torch.frombuffer(buffer=buf, 
+                                dtype=torch.float32, 
                                 offset=quantized_buf_meta.Offset(),
                                 count=quantized_buf_meta.Size() // 4)
     
     if dims is not None:
         tensor_data.reshape(dims)
+
+    if TARGET_DTYPE != torch.float32:
+        tensor_data = tensor_data.to(dtype=TARGET_DTYPE)
 
     tensor_dict[target_name] = tensor_data
 
@@ -253,22 +260,23 @@ for tensor_name, quantized_tensor in i8_tensors.items():
 
     target_name = update_target_name(tensor_name)
 
-    quantized_buf = np.frombuffer(buffer=buf, 
-                                  dtype=np.int8, 
+    quantized_buf = torch.frombuffer(buffer=buf, 
+                                  dtype=torch.int8, 
                                   offset=quantized_buf_meta.Offset(),
                                   count=quantized_buf_meta.Size())
     
-    scale_buf = np.frombuffer(buffer=buf,
-                              dtype=np.float32,
+    scale_buf = torch.frombuffer(buffer=buf,
+                              dtype=torch.float32,
                               offset=scale_buf_meta.Offset(),
                               count=scale_buf_meta.Size() // 4)
     
     # MediaPipe TfLiteWeightAccessor::BuildWeightsMapFromTfliteModel sets
     # dim_scale=0, so we do the same.
-    tensor_data = convert_quantized_int8_to_fp32(quantized_data=quantized_buf,
-                                                 scale_data=scale_buf,
-                                                 dims=dims,
-                                                 dim_scale=0)
+    tensor_data = convert_quantized_int8_to_fp(quantized_data=quantized_buf,
+                                               scale_data=scale_buf,
+                                               dims=dims,
+                                               dim_scale=0,
+                                               dtype=TARGET_DTYPE)
 
     tensor_dict[target_name] = tensor_data
 
@@ -284,22 +292,23 @@ for tensor_name, quantized_tensor in i4_tensors.items():
 
     target_name = update_target_name(tensor_name)
 
-    quantized_buf = np.frombuffer(buffer=buf, 
-                                  dtype=np.uint8, 
+    quantized_buf = torch.frombuffer(buffer=buf, 
+                                  dtype=torch.uint8, 
                                   offset=quantized_buf_meta.Offset(),
                                   count=quantized_buf_meta.Size())
     
-    scale_buf = np.frombuffer(buffer=buf,
-                              dtype=np.float32,
+    scale_buf = torch.frombuffer(buffer=buf,
+                              dtype=torch.float32,
                               offset=scale_buf_meta.Offset(),
                               count=scale_buf_meta.Size() // 4)
     
     # MediaPipe TfLiteWeightAccessor::BuildWeightsMapFromTfliteModel sets
     # dim_scale=0, so we do the same.
-    tensor_data = convert_quantized_int4_to_fp32(quantized_data=quantized_buf,
-                                                 scale_data=scale_buf,
-                                                 dims=dims,
-                                                 dim_scale=0)
+    tensor_data = convert_quantized_int4_to_fp(quantized_data=quantized_buf,
+                                               scale_data=scale_buf,
+                                               dims=dims,
+                                               dim_scale=0,
+                                               dtype=TARGET_DTYPE)
 
     tensor_dict[target_name] = tensor_data
 
