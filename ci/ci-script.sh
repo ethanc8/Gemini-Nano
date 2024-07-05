@@ -10,9 +10,12 @@ wget "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforg
 bash Miniforge3-$(uname)-$(uname -m).sh -b
 rm Miniforge3-$(uname)-$(uname -m).sh
 
-bash -c "conda init; mamba init"
+source ~/.bashrc
 
-echo "Building conda environment..."
+conda init
+mamba init
+
+echo "Converting..."
 
 bash convert-all.sh $1
 
