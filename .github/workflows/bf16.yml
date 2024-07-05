@@ -12,4 +12,4 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          - bash ci/ci-script.sh bf16
+          bash ci/ci-script.sh bf16
