@@ -1,3 +1,5 @@
+cd Gemini-Nano || true
+
 echo "Cloning https://huggingface.co/ethanc8/Gemini-Nano-CI..."
 GIT_LFS_SKIP_SMUDGE=1 git clone https://ethanc8:${HF_TOKEN}@huggingface.co/ethanc8/Gemini-Nano-CI
 
