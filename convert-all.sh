@@ -1,7 +1,7 @@
 #!/bin/bash
 
 mamba env create -f environment-cpu.yml
-mamba activate Gemini-Nano
+conda activate Gemini-Nano
 echo "Downloading weights..."
 wget https://huggingface.co/oongaboongahacker/Gemini-Nano/resolve/main/weights.bin --no-verbose
 
