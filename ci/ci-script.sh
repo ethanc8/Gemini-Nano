@@ -1,8 +1,14 @@
-conda activate Gemini-Nano
-echo "PATH: $PATH"
-
 echo "Cloning https://huggingface.co/ethanc8/Gemini-Nano-CI..."
 GIT_LFS_SKIP_SMUDGE=1 git clone https://ethanc8:${HF_TOKEN}@huggingface.co/ethanc8/Gemini-Nano-CI
+
+echo "Installing Miniforge3..."
+wget "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
+bash Miniforge3-$(uname)-$(uname -m).sh -b
+rm Miniforge3-$(uname)-$(uname -m).sh
+
+bash -c "conda init; mamba init"
+
+echo "Building conda environment..."
 
 bash convert-all.sh $1
 
