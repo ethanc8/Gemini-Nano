@@ -1,3 +1,5 @@
+#!/bin/bash
+
 cd Gemini-Nano || true
 
 echo "Cloning https://huggingface.co/ethanc8/Gemini-Nano-CI..."
