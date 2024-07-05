@@ -5,5 +5,5 @@ mamba activate Gemini-Nano
 wget https://huggingface.co/oongaboongahacker/Gemini-Nano/resolve/main/weights.bin
 
 cd playground
-python3 converter.py ../weights.bin ../weights_fp32.safetensors
+python3 converter.py ../weights.bin ../weights_$1.safetensors
 cd ..

@@ -7,9 +7,16 @@ import sys
 import torch
 import safetensors.torch as st
 
-# TARGET_DTYPE = torch.float32
-TARGET_DTYPE = torch.float16
-# TARGET_DTYPE = torch.bfloat16
+if len(sys.argv) >= 4:
+    if sys.argv[3] == "fp32":
+        TARGET_DTYPE = torch.float32
+    elif sys.argv[3] == "fp16":
+        TARGET_DTYPE = torch.float16
+    elif sys.argv[3] == "bf16":
+        TARGET_DTYPE = torch.bfloat16
+else:
+    print("WARNING: TARGET_DTYPE not properly specified, assuming fp32")
+    TARGET_DTYPE = torch.float32
 
 # from mediapipe.tasks.cc.genai.inference.proto import llm_params_pb2
 

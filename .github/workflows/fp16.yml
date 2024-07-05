@@ -1,0 +1,15 @@
+on:
+  [push]
+name: GEMINI_XS to fp16
+jobs:
+  testbuild:
+    name: Building GNUstep
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the build script repository
+        uses: actions/checkout@master
+      - name: Execute test script
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          - bash ci/ci-script.sh fp16
