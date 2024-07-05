@@ -6,7 +6,7 @@ rm Miniforge3-$(uname)-$(uname -m).sh
 
 bash convert-all.sh $1
 
-mv weights_$1.safetensors Gemini-Nano-CI/weights_$1.safetensors
+PATH="$HOME/miniforge3/condabin/:$PATH" mv weights_$1.safetensors Gemini-Nano-CI/weights_$1.safetensors
 
 cd Gemini-Nano-CI
 git add weights_$1.safetensors && git commit -m "Upload of $1 weights"
