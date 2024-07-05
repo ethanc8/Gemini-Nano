@@ -6,7 +6,21 @@ wget "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforg
 bash Miniforge3-$(uname)-$(uname -m).sh -b
 rm Miniforge3-$(uname)-$(uname -m).sh
 
-source ~/.bashrc
+__conda_setup="$('$HOME/miniforge3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "$HOME/miniforge3/etc/profile.d/conda.sh" ]; then
+        . "$HOME/miniforge3/etc/profile.d/conda.sh"
+    else
+        export PATH="$HOME/miniforge3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+
+if [ -f "$HOME/miniforge3/etc/profile.d/mamba.sh" ]; then
+    . "$HOME/miniforge3/etc/profile.d/mamba.sh"
+fi
 
 mamba init
 bash convert-all.sh $1
