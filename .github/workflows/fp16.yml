@@ -3,7 +3,7 @@ on:
 name: GEMINI_XS to fp16
 jobs:
   testbuild:
-    name: Building GNUstep
+    name: Converting model
     runs-on: ubuntu-latest
     steps:
       - name: Check out the build script repository
