@@ -10,10 +10,13 @@ wget "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforg
 bash Miniforge3-$(uname)-$(uname -m).sh -b
 rm Miniforge3-$(uname)-$(uname -m).sh
 
+eval "$(~/miniforge3/bin/conda shell.bash hook)"
 source ~/.bashrc
 
 conda init
 mamba init
+
+source ~/.bashrc
 
 echo "Converting..."
 
