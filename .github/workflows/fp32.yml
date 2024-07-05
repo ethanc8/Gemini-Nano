@@ -6,9 +6,16 @@ jobs:
     name: Converting model
     runs-on: ubuntu-latest
     steps:
-      - name: Check out the build script repository
+      - name: Check out the main repository
         uses: actions/checkout@master
-      - name: Execute test script
+      - name: Install Miniforge3 and set up conda environment
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          activate-environment: Gemini-Nano
+          environment-file: environment-cpu.yml
+          miniforge-version: latest
+          mamba-version: "*"
+      - name: Dequantize and upload the model
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
