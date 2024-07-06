@@ -6,8 +6,6 @@ jobs:
     name: Dequantize model
     runs-on: ubuntu-latest
     steps:
-      - name: Check out the conversion repository
-        uses: actions/checkout@master
       - name: Dequantize and upload the model
         run: |
           docker build -t ci-fp16-dequantize ci/fp16-dequantize/.
