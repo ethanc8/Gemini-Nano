@@ -1,5 +1,8 @@
 #!/bin/bash
 
+sudo apt install git-lfs
+git lfs install
+
 cd Gemini-Nano || true
 
 echo "Cloning https://huggingface.co/ethanc8/Gemini-Nano-CI..."
