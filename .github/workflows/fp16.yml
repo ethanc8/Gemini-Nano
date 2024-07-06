@@ -6,7 +6,17 @@ jobs:
     name: Dequantize model
     runs-on: ubuntu-latest
     steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
       - name: Dequantize and upload the model
-        run: |
-          docker build -t ci-fp16-dequantize ci/fp16-dequantize/.
-          docker run ci-fp16-dequantize
+        uses: docker/build-push-action@v6
+        with:
+          platforms: linux/amd64
+          file: ci/fp16-dequantize/Dockerfile
+          tags: user/app:latest
+          secrets: |
+            "hf_token=${{ secrets.HF_TOKEN }}"  
