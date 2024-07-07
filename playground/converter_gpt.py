@@ -1,11 +1,19 @@
-# This is an optimized version of converter.py which was suggested by GPT-4o
 import tflite.Model, tflite.SubGraph
 from tflite.TensorType import TensorType
 import sys
 import torch
 import safetensors.torch as st
-import numpy as np
-from multiprocessing import Pool
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from queue import Queue
+import threading
+
+# Function to log messages
+def log_listener(queue):
+    while True:
+        message = queue.get()
+        if message == "DONE":
+            break
+        print(message)
 
 # Reversed from https://github.com/google-ai-edge/mediapipe/blob/master/mediapipe/tasks/python/genai/converter/safetensors_converter.py#L433
 def update_target_name(target_name: str) -> str:
@@ -101,14 +109,13 @@ def convert_quantized_int8_to_fp(quantized_data, scale_data, dims, dim_scale, dt
     return scaled_data
 
 # Function to process tensors
-def process_tensor(args):
-    tensor_name, quantized_tensor, buf, scale_tensors, tensor_dims, model, TARGET_DTYPE = args
+def process_tensor(tensor_name, quantized_tensor, buf, scale_tensors, tensor_dims, model, TARGET_DTYPE, log_queue):
     quantized_buf_meta = model.Buffers(quantized_tensor.Buffer())
     scale_tensor_name = tensor_name + "_quantized_scale"
     scale_buf_meta = model.Buffers(scale_tensors[scale_tensor_name].Buffer())
     dims = tensor_dims[tensor_name]
 
-    print(f"Dequantizing {dims} {tensor_name}...")
+    log_queue.put(f"Dequantizing {dims} {tensor_name}...")
 
     if quantized_tensor.Type() == TensorType.INT4:
         quantized_buf = torch.frombuffer(buffer=buf, dtype=torch.uint8, offset=quantized_buf_meta.Offset(), count=quantized_buf_meta.Size())
@@ -212,14 +219,19 @@ def main():
 
     del fp32_tensors
 
-    pool = Pool()
-    tasks = [(tensor_name, tensor, buf, scale_tensors, tensor_dims, model, TARGET_DTYPE) for tensor_name, tensor in {**i4_tensors, **i8_tensors}.items()]
-    results = pool.map(process_tensor, tasks)
-    pool.close()
-    pool.join()
+    log_queue = Queue()
+    log_thread = threading.Thread(target=log_listener, args=(log_queue,))
+    log_thread.start()
 
-    for target_name, tensor_data in results:
-        tensor_dict[target_name] = tensor_data
+    with ThreadPoolExecutor() as executor:
+        future_to_tensor = {executor.submit(process_tensor, tensor_name, tensor, buf, scale_tensors, tensor_dims, model, TARGET_DTYPE, log_queue): tensor_name for tensor_name, tensor in {**i4_tensors, **i8_tensors}.items()}
+        
+        for future in as_completed(future_to_tensor):
+            target_name, tensor_data = future.result()
+            tensor_dict[target_name] = tensor_data
+
+    log_queue.put("DONE")
+    log_thread.join()
 
     del i4_tensors, i8_tensors, scale_tensors, buf, model, graph
     input_file.close()
