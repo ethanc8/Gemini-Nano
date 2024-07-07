@@ -102,12 +102,13 @@ def convert_quantized_int8_to_fp(quantized_data, scale_data, dims, dim_scale, dt
 
 # Function to process tensors
 def process_tensor(args):
-    print(f"Dequantizing {dims} {tensor_name}...")
     tensor_name, quantized_tensor, buf, scale_tensors, tensor_dims, model, TARGET_DTYPE = args
     quantized_buf_meta = model.Buffers(quantized_tensor.Buffer())
     scale_tensor_name = tensor_name + "_quantized_scale"
     scale_buf_meta = model.Buffers(scale_tensors[scale_tensor_name].Buffer())
     dims = tensor_dims[tensor_name]
+
+    print(f"Dequantizing {dims} {tensor_name}...")
 
     if quantized_tensor.Type() == TensorType.INT4:
         quantized_buf = torch.frombuffer(buffer=buf, dtype=torch.uint8, offset=quantized_buf_meta.Offset(), count=quantized_buf_meta.Size())
