@@ -102,6 +102,7 @@ def convert_quantized_int8_to_fp(quantized_data, scale_data, dims, dim_scale, dt
 
 # Function to process tensors
 def process_tensor(args):
+    print(f"Dequantizing {dims} {tensor_name}...")
     tensor_name, quantized_tensor, buf, scale_tensors, tensor_dims, model, TARGET_DTYPE = args
     quantized_buf_meta = model.Buffers(quantized_tensor.Buffer())
     scale_tensor_name = tensor_name + "_quantized_scale"
@@ -201,6 +202,7 @@ def main():
     for tensor_name, tensor in fp32_tensors.items():
         quantized_buf_meta = model.Buffers(tensor.Buffer())
         dims = tensor_dims[tensor_name]
+        print(f"Saving fp32 {dims} {tensor_name}...")
         target_name = update_target_name(tensor_name)
         tensor_data = torch.frombuffer(buffer=buf, dtype=torch.float32, offset=quantized_buf_meta.Offset(), count=quantized_buf_meta.Size() // 4)
         if dims is not None:
