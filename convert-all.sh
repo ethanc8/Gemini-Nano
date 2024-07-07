@@ -9,5 +9,5 @@ wget https://huggingface.co/oongaboongahacker/Gemini-Nano/resolve/main/weights.b
 
 echo "Converting weights..."
 cd playground
-python3 converter.py ../weights.bin ../weights_$1.safetensors
+python3 converter_gpt.py ../weights.bin ../weights_$1.safetensors
 cd ..
